@@ -1,0 +1,48 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+# Web framework for server-side
+axum = { version = "0.7", features = ["multipart"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "cors"] }
+
+# Vector operations and math
+ndarray = "0.15"
+
+# Text processing
+unicode-segmentation = "1.10"
+regex = "1.10"
+
+# Simple embedding simulation
+sha2 = "0.10"
+rand = "0.8"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "server"
+path = "src/server.rs"
+
+[[bin]]
+name = "test_storage"
+path = "src/test_storage.rs"
+
+[[bin]]
+name = "demo_storage"
+path = "src/demo_storage.rs"
+
+[[bin]]
+name = "csv_loader"
+path = "src/csv_loader.rs"

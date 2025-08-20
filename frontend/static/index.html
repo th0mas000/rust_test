@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Semantic Search Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: #4CAF50;
+            border-bottom: 3px solid #4CAF50;
+        }
+
+        .tab:hover {
+            background: #e9ecef;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            flex: 1;
+        }
+
+        .search-btn {
+            padding: 12px 25px;
+            white-space: nowrap;
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4CAF50;
+            transition: transform 0.2s ease;
+        }
+
+        .result-item:hover {
+            transform: translateX(5px);
+        }
+
+        .result-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-body {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .result-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            color: #999;
+        }
+
+        .rating {
+            color: #ffc107;
+            font-weight: 600;
+        }
+
+        .similarity {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .stats h3 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .file-input {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 12px 15px;
+            background: #f8f9fa;
+            border: 2px dashed #4CAF50;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            background: #e9f7ef;
+            border-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Review Semantic Search</h1>
+       
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showSection('search')">🔍 Search Reviews</button>
+            <button class="tab" onclick="showSection('add')">➕ Add Review</button>
+            <button class="tab" onclick="showSection('bulk')">📁 Bulk Import</button>
+            <button class="tab" onclick="showSection('stats')">📊 Statistics</button>
+        </div>
+
+        <div class="content">
+   
+            <div id="search" class="section active">
+                <div class="search-container">
+                    <input type="text" id="searchQuery" class="search-input" placeholder="Search for reviews (e.g., 'battery life', 'user interface', 'value for money')...">
+                    <button class="btn search-btn" onclick="searchReviews()">Search</button>
+                </div>
+                <div id="searchResults" class="results"></div>
+            </div>
+
+ 
+            <div id="add" class="section">
+                <h2>Add New Review</h2>
+                <form id="reviewForm">
+                    <div class="form-group">
+                        <label for="reviewTitle">Review Title</label>
+                        <input type="text" id="reviewTitle" required placeholder="e.g., Great smartphone with excellent camera">
+                    </div>
+                    <div class="form-group">
+                        <label for="reviewBody">Review Content</label>
+                        <textarea id="reviewBody" required placeholder="Write your detailed review here..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="productId">Product ID</label>
+                        <input type="text" id="productId" required placeholder="e.g., PROD-123">
+                    </div>
+                    <div class="form-group">
+                        <label for="reviewRating">Rating</label>
+                        <select id="reviewRating" required>
+                            <option value="">Select a rating</option>
+                            <option value="1">⭐ 1 - Poor</option>
+                            <option value="2">⭐⭐ 2 - Fair</option>
+                            <option value="3">⭐⭐⭐ 3 - Good</option>
+                            <option value="4">⭐⭐⭐⭐ 4 - Very Good</option>
+                            <option value="5">⭐⭐⭐⭐⭐ 5 - Excellent</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn">Add Review</button>
+                </form>
+            </div>
+
+   
+            <div id="bulk" class="section">
+                <h2>Bulk Import Reviews</h2>
+                <p>Upload a JSON file containing multiple reviews for batch processing.</p>
+                <div class="form-group">
+                    <div class="file-input">
+                        <input type="file" id="bulkFile" accept=".json">
+                        <label for="bulkFile" class="file-input-label">
+                            📁 Choose JSON file or drag and drop here
+                        </label>
+                    </div>
+                </div>
+                <button class="btn" onclick="uploadBulkReviews()">Import Reviews</button>
+                
+                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <h4>Expected JSON format:</h4>
+                    <pre style="background: #e9ecef; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 0.9em;">
+{
+  "reviews": [
+    {
+      "review_title": "Great product",
+      "review_body": "I love this product...",
+      "product_id": "PROD-123",
+      "review_rating": 5
+    }
+  ]
+}</pre>
+                </div>
+            </div>
+
+ 
+            <div id="stats" class="section">
+                <h2>Platform Statistics</h2>
+                <div id="statsContainer" class="stats">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading statistics...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSection = 'search';
+
+        function showSection(section) {
+   
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+  
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(section).classList.add('active');
+
+            currentSection = section;
+
+   
+            if (section === 'stats') {
+                loadStats();
+            }
+        }
+
+        function showMessage(message, type = 'success') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            
+        
+            const activeSection = document.querySelector('.section.active');
+            activeSection.insertBefore(messageDiv, activeSection.firstChild);
+
+      
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
+        }
+
+        async function searchReviews() {
+            const query = document.getElementById('searchQuery').value.trim();
+            if (!query) {
+                showMessage('Please enter a search query', 'error');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Searching...</div>';
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        limit: 10
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displaySearchResults(data);
+                } else {
+                    throw new Error(data.error || 'Search failed');
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="message error">Search failed: ${error.message}</div>`;
+            }
+        }
+
+        function displaySearchResults(data) {
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (data.results.length === 0) {
+                resultsDiv.innerHTML = '<div class="message">No results found. Try a different search query.</div>';
+                return;
+            }
+
+            let html = `<h3>Found ${data.total_found} results for "${data.query}"</h3>`;
+            
+            data.results.forEach(result => {
+                const stars = '⭐'.repeat(result.review.review_rating);
+                const similarity = (result.similarity_score * 100).toFixed(1);
+                
+                html += `
+                    <div class="result-item">
+                        <div class="result-title">${result.review.review_title}</div>
+                        <div class="result-body">${result.review.review_body}</div>
+                        <div class="result-meta">
+                            <span>Product: ${result.review.product_id}</span>
+                            <span class="rating">${stars} (${result.review.review_rating}/5)</span>
+                            <span class="similarity">${similarity}% match</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        
+        document.getElementById('reviewForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const review = {
+                review_title: document.getElementById('reviewTitle').value,
+                review_body: document.getElementById('reviewBody').value,
+                product_id: document.getElementById('productId').value,
+                review_rating: parseInt(document.getElementById('reviewRating').value),
+                id: ""
+            };
+
+            try {
+                const response = await fetch('/api/reviews', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(review)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('Review added successfully!');
+                    document.getElementById('reviewForm').reset();
+                } else {
+                    throw new Error(data.error || 'Failed to add review');
+                }
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        });
+
+        async function uploadBulkReviews() {
+            const fileInput = document.getElementById('bulkFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showMessage('Please select a JSON file', 'error');
+                return;
+            }
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                const response = await fetch('/api/reviews/bulk', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage(`Successfully imported ${result.inserted_count} reviews!`);
+                    fileInput.value = '';
+                } else {
+                    throw new Error(result.message || 'Bulk import failed');
+                }
+            } catch (error) {
+                showMessage(`Import error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+
+                document.getElementById('statsContainer').innerHTML = `
+                    <h3>📊 Platform Statistics</h3>
+                    <p><strong>Total Reviews:</strong> ${data.total_reviews}</p>
+                    <p><strong>Status:</strong> ${data.status}</p>
+                    <p><strong>Data Directory:</strong> ${data.data_directory}</p>
+                `;
+            } catch (error) {
+                document.getElementById('statsContainer').innerHTML = `
+                    <div class="message error">Failed to load statistics: ${error.message}</div>
+                `;
+            }
+        }
+
+        
+        document.getElementById('searchQuery').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchReviews();
+            }
+        });
+
+     
+        loadStats();
+    </script>
+</body>
+</html>
