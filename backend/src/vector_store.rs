@@ -13,7 +13,6 @@ use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 use std::sync::Arc;
 
-// Simple vector index entry
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct VectorEntry {
     pub id: String,
@@ -35,7 +34,7 @@ fn default_version() -> u32 {
     1
 }
 
-// SPFresh-inspired search statistics
+
 #[derive(Debug, Clone, Default)]
 pub struct SearchStats {
     pub total_searches: usize,
@@ -45,7 +44,7 @@ pub struct SearchStats {
     pub vectors_compared: usize,
 }
 
-// SPFresh-inspired dynamic index configuration
+
 #[derive(Debug, Clone)]
 pub struct IndexConfig {
     pub max_cache_size: usize,
@@ -62,14 +61,14 @@ impl Default for IndexConfig {
             max_cache_size: 10000,
             search_k: 10,
             internal_result_num: 64,
-            similarity_threshold: 0.0, // Filter out negative similarities  
+            similarity_threshold: 0.0,
             enable_quantization: false,
             batch_size: 100,
         }
     }
 }
 
-// Query result cache entry
+
 #[derive(Debug, Clone)]
 struct CacheEntry {
     results: Vec<SearchResult>,
@@ -77,44 +76,40 @@ struct CacheEntry {
     query_hash: u64,
 }
 
-// Simple mock embedding service (for demonstration)
-// In production, this would be replaced with a real embedding model
 pub struct MockEmbeddingModel {
     dimension: usize,
 }
 
 impl MockEmbeddingModel {
     pub fn new() -> Self {
-        Self { dimension: 384 } // Simulate 384-dimensional embeddings like sentence transformers
+        Self { dimension: 384 }
     }
 
-    // Create a deterministic embedding based on text content
+
     pub fn embed(&self, text: &str) -> Vec<f32> {
-        // Normalize and clean text
+
         let cleaned_text = text.to_lowercase()
             .chars()
             .filter(|c| c.is_alphanumeric() || c.is_whitespace())
             .collect::<String>();
         
-        // Create hash for deterministic seed
+
         let mut hasher = Sha256::new();
         hasher.update(cleaned_text.as_bytes());
         let hash = hasher.finalize();
-        
-        // Use hash as seed for random number generator
+
         let seed_bytes: [u8; 32] = hash.into();
         let mut rng = StdRng::from_seed(seed_bytes);
         
-        // Generate base vector from hash
+
         let mut vector = vec![0.0f32; self.dimension];
         for i in 0..self.dimension {
             vector[i] = rng.gen_range(-1.0..1.0);
         }
-        
-        // Add semantic features based on text characteristics
+
         self.add_semantic_features(&mut vector, &cleaned_text);
         
-        // Normalize vector
+
         self.normalize_vector(&mut vector);
         
         vector
@@ -124,14 +119,42 @@ impl MockEmbeddingModel {
         let words: Vec<&str> = text.split_whitespace().collect();
         let word_count = words.len() as f32;
         
-        // Add features based on word count
+
         if self.dimension > 10 {
             vector[0] += (word_count / 100.0).min(1.0);
         }
         
-        // Add features for common semantic categories
-        let positive_words = ["good", "great", "excellent", "amazing", "love", "perfect", "best"];
-        let negative_words = ["bad", "terrible", "awful", "hate", "worst", "horrible"];
+
+        let positive_words = [
+   
+            "good", "great", "excellent", "amazing", "love", "perfect", "best",
+       
+            "fantastic", "wonderful", "awesome", "beautiful", "fabulous", "delicious",
+            "outstanding", "exceptional", "brilliant", "lovely", "superb", "terrific",
+            "marvelous", "impressive", "stellar", "incredible", "magnificent", "divine",
+ 
+            "friendly", "attentive", "professional", "warm", "welcoming", "accommodating",
+            "helpful", "courteous", "pleasant", "caring", "thoughtful", "considerate",
+
+            "fresh", "tasty", "flavorful", "rich", "smooth", "tender", "crispy",
+            "perfectly", "well-prepared", "well-made", "high-quality", "top-notch",
+
+            "cozy", "comfortable", "relaxing", "charming", "elegant", "classy",
+            "inviting", "stylish", "sophisticated", "atmospheric", "intimate",
+
+            "recommend", "definitely", "highly", "must-try", "worth", "favorite",
+            "gem", "treasure", "hidden", "secret", "special", "unique"
+        ];
+        
+        let negative_words = [
+
+            "bad", "terrible", "awful", "hate", "worst", "horrible",
+
+            "disappointing", "poor", "unpleasant", "rude", "slow", "cold",
+            "overpriced", "expensive", "bland", "tasteless", "dry", "soggy",
+            "dirty", "messy", "noisy", "crowded", "uncomfortable", "unprofessional"
+        ];
+        
         let tech_words = ["battery", "camera", "screen", "performance", "fast", "slow", "memory"];
         
         let positive_score = self.count_word_matches(&words, &positive_words) as f32;
@@ -166,14 +189,13 @@ impl MockEmbeddingModel {
     }
 }
 
-// File-based vector store (implementing basic functionality inspired by SPFresh)
 pub struct VectorStore {
     embedding_model: MockEmbeddingModel,
     index_path: String,
     metadata_path: String,
     vectors: RwLock<Vec<VectorEntry>>,
     metadata: RwLock<Vec<Review>>,
-    // SPFresh-inspired features
+
     config: IndexConfig,
     stats: RwLock<SearchStats>,
     query_cache: RwLock<HashMap<u64, CacheEntry>>,
@@ -181,13 +203,13 @@ pub struct VectorStore {
 
 impl VectorStore {
     pub async fn new(data_dir: &str) -> Result<Self> {
-        // Create data directory if it doesn't exist
+
         std::fs::create_dir_all(data_dir)?;
         
         let index_path = format!("{}/reviews.index", data_dir);
         let metadata_path = format!("{}/reviews.jsonl", data_dir);
         
-        // Initialize mock embedding model
+
         let model = MockEmbeddingModel::new();
 
         let store = Self {
@@ -201,13 +223,13 @@ impl VectorStore {
             query_cache: RwLock::new(HashMap::new()),
         };
 
-        // Load existing data
+
         store.load_from_disk().await?;
         
         Ok(store)
     }
 
-    // Create embedding from text
+
     pub fn create_embedding(&self, text: &str) -> Result<Vec<f32>> {
         if text.trim().is_empty() {
             return Err(anyhow!("Cannot create embedding from empty text"));
@@ -215,9 +237,8 @@ impl VectorStore {
         Ok(self.embedding_model.embed(text))
     }
 
-    // Add a review to the store (append-only)
     pub async fn add_review(&self, review: Review) -> Result<()> {
-        // Create embedding from review title + body
+
         let text = format!("{} {}", review.review_title, review.review_body);
         let vector = self.create_embedding(&text)?;
         
@@ -231,7 +252,6 @@ impl VectorStore {
             version: 1,
         };
 
-        // Add to in-memory store
         {
             let mut vectors = self.vectors.write().await;
             let mut metadata = self.metadata.write().await;
@@ -240,13 +260,11 @@ impl VectorStore {
             metadata.push(review.clone());
         }
 
-        // Append to disk
         self.append_to_disk(&vector_entry, &review).await?;
         
         Ok(())
     }
 
-    // Bulk add reviews
     pub async fn add_reviews_bulk(&self, reviews: Vec<Review>) -> Result<usize> {
         let mut added_count = 0;
         
@@ -259,25 +277,21 @@ impl VectorStore {
         Ok(added_count)
     }
 
-    // Search for similar reviews
-    // Enhanced search with SPFresh-inspired features
     pub async fn search(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
         let start_time = Instant::now();
-        
-        // Create query hash for caching
+
         let query_hash = self.hash_query(query);
         
-        // Check cache first
+
         if let Some(cached_results) = self.check_cache(query_hash).await {
             self.update_stats_cache_hit().await;
             return Ok(cached_results.into_iter().take(limit).collect());
         }
 
-        // Create embedding for the query
         let query_vector = self.create_embedding(query)?;
         let query_array = Array1::from_vec(query_vector);
         
-        // Use internal_result_num for more comprehensive search (SPFresh-inspired)
+
         let internal_limit = self.config.internal_result_num.max(limit * 2);
         
         let vectors = self.vectors.read().await;
@@ -286,25 +300,25 @@ impl VectorStore {
         let mut results = Vec::new();
         let mut vectors_compared = 0;
         
-        // Calculate multiple similarity scores for each vector
+
         for (i, vector_entry) in vectors.iter().enumerate() {
             let vector_array = Array1::from_vec(vector_entry.vector.clone());
             
-            // Calculate different similarity scores
+
             let combined_similarity = cosine_similarity(&query_array, &vector_array);
             
             vectors_compared += 1;
             
-            // Also check for direct text matches to boost relevance
+
             if let Some(review) = metadata.get(i) {
                 let mut final_similarity = combined_similarity;
                 
-                // Boost score for exact keyword matches (case-insensitive)
+  
                 let query_lower = query.to_lowercase();
                 let title_lower = review.review_title.to_lowercase();
                 let body_lower = review.review_body.to_lowercase();
                 
-                // Check each word in the query for matches
+    
                 let query_words: Vec<&str> = query_lower.split_whitespace().collect();
                 let mut title_matches = 0;
                 let mut body_matches = 0;
@@ -318,7 +332,7 @@ impl VectorStore {
                     }
                 }
                 
-                // Apply boosting based on matches
+
                 if title_matches > 0 {
                     final_similarity += 0.15 * (title_matches as f32 / query_words.len() as f32); // Title match boost
                 }
@@ -327,7 +341,7 @@ impl VectorStore {
                     final_similarity += 0.1 * (body_matches as f32 / query_words.len() as f32); // Body match boost
                 }
                 
-                // Apply similarity threshold filter (SPFresh-inspired)
+           
                 if final_similarity >= self.config.similarity_threshold {
                     results.push(SearchResult {
                         review: review.clone(),
@@ -337,21 +351,21 @@ impl VectorStore {
             }
         }
         
-        // Sort by similarity (descending) and take internal results first
+ 
         results.sort_by(|a, b| b.similarity_score.partial_cmp(&a.similarity_score).unwrap());
         results.truncate(internal_limit);
         
-        // Cache the internal results for future queries
+    
         self.cache_results(query_hash, results.clone()).await;
         
-        // Update statistics
+   
         self.update_stats(start_time.elapsed().as_millis() as usize, vectors_compared).await;
         
-        // Return only the requested limit
+    
         Ok(results.into_iter().take(limit).collect())
     }
 
-    // SPFresh-inspired helper methods
+ 
     fn hash_query(&self, query: &str) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
@@ -364,7 +378,7 @@ impl VectorStore {
     async fn check_cache(&self, query_hash: u64) -> Option<Vec<SearchResult>> {
         let cache = self.query_cache.read().await;
         if let Some(entry) = cache.get(&query_hash) {
-            // Check if cache entry is still valid (within 5 minutes)
+       
             if entry.timestamp.elapsed().as_secs() < 300 {
                 return Some(entry.results.clone());
             }
@@ -375,9 +389,9 @@ impl VectorStore {
     async fn cache_results(&self, query_hash: u64, results: Vec<SearchResult>) {
         let mut cache = self.query_cache.write().await;
         
-        // Implement cache size limit
+
         if cache.len() >= self.config.max_cache_size {
-            // Remove oldest entries (simple FIFO)
+
             let keys_to_remove: Vec<_> = cache.keys().take(cache.len() / 2).cloned().collect();
             for key in keys_to_remove {
                 cache.remove(&key);
@@ -405,14 +419,14 @@ impl VectorStore {
         stats.vectors_compared += vectors_compared;
     }
 
-    // Get current search statistics
+
     pub async fn get_stats(&self) -> SearchStats {
         self.stats.read().await.clone()
     }
 
-    // Load existing data from disk
+
     async fn load_from_disk(&self) -> Result<()> {
-        // Load vectors from index file
+    
         if Path::new(&self.index_path).exists() {
             let file = File::open(&self.index_path)?;
             let reader = BufReader::new(file);
@@ -426,7 +440,7 @@ impl VectorStore {
             }
         }
 
-        // Load metadata from jsonl file
+
         if Path::new(&self.metadata_path).exists() {
             let file = File::open(&self.metadata_path)?;
             let reader = BufReader::new(file);
@@ -443,9 +457,9 @@ impl VectorStore {
         Ok(())
     }
 
-    // Append new data to disk files
+
     async fn append_to_disk(&self, vector_entry: &VectorEntry, review: &Review) -> Result<()> {
-        // Append vector to index file
+  
         {
             let mut file = OpenOptions::new()
                 .create(true)
@@ -456,7 +470,7 @@ impl VectorStore {
             writeln!(file, "{}", vector_json)?;
         }
 
-        // Append metadata to jsonl file
+   
         {
             let mut file = OpenOptions::new()
                 .create(true)
@@ -470,42 +484,42 @@ impl VectorStore {
         Ok(())
     }
 
-    // Get total count of stored reviews
+
     pub async fn count(&self) -> usize {
         let metadata = self.metadata.read().await;
         metadata.len()
     }
 
-    // SPFresh-inspired additional methods
+
     
-    // Get index configuration
+
     pub fn get_config(&self) -> &IndexConfig {
         &self.config
     }
     
-    // Update search configuration (dynamic reconfiguration)
+
     pub async fn update_config(&mut self, new_config: IndexConfig) {
         self.config = new_config;
-        // Clear cache when configuration changes
+ 
         let mut cache = self.query_cache.write().await;
         cache.clear();
     }
     
-    // Force cache compaction (remove expired entries)
+
     pub async fn compact_cache(&self) {
         let mut cache = self.query_cache.write().await;
         let now = Instant::now();
         cache.retain(|_, entry| now.duration_since(entry.timestamp).as_secs() < 300);
     }
     
-    // Get cache statistics
+
     pub async fn get_cache_stats(&self) -> (usize, usize) {
         let cache = self.query_cache.read().await;
         let stats = self.stats.read().await;
         (cache.len(), stats.cache_hits)
     }
     
-    // Batch add reviews (SPFresh-inspired bulk operations)
+
     pub async fn add_reviews_batch(&self, reviews: Vec<Review>) -> Result<usize> {
         let mut added_count = 0;
         
@@ -515,14 +529,14 @@ impl VectorStore {
             }
         }
         
-        // Force cache clear after bulk operations
+
         let mut cache = self.query_cache.write().await;
         cache.clear();
         
         Ok(added_count)
     }
     
-    // Get memory usage statistics
+
     pub async fn get_memory_stats(&self) -> (usize, usize, usize) {
         let vectors = self.vectors.read().await;
         let metadata = self.metadata.read().await;
@@ -538,7 +552,6 @@ impl VectorStore {
     }
 }
 
-// Helper function to calculate cosine similarity
 fn cosine_similarity(a: &Array1<f32>, b: &Array1<f32>) -> f32 {
     let dot_product = a.dot(b);
     let norm_a = (a.dot(a)).sqrt();
