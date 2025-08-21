@@ -3,7 +3,7 @@ use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
 
-// API types shared with backend
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SearchQuery {
     pub query: String,
@@ -59,10 +59,10 @@ pub struct Review {
     pub review_body: String,
     pub product_id: String,
     pub review_rating: u8,
-    pub created_at: String, // Simplified for frontend
+    pub created_at: String,
 }
 
-// API call function - WASM compatible
+
 async fn call_search_api(query: SearchQuery) -> Result<SearchResponse, String> {
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::JsFuture;
@@ -160,7 +160,7 @@ fn SearchPage() -> impl IntoView {
                 return;
             }
 
-            // Call backend API
+  
             let search_request = SearchQuery {
                 query: query.clone(),
                 limit: Some(10),
@@ -238,21 +238,21 @@ fn StatsPage() -> impl IntoView {
     let load_stats = create_action(move |_: &()| async move {
         set_is_loading.set(true);
         
-        // Load search stats
+ 
         if let Ok(response) = call_api::<(), serde_json::Value>("http://127.0.0.1:8000/api/stats/search", "GET", None).await {
             if let Ok(stats) = serde_json::from_value::<SearchStats>(response["search_stats"].clone()) {
                 set_search_stats.set(Some(stats));
             }
         }
         
-        // Load cache stats
+    
         if let Ok(response) = call_api::<(), serde_json::Value>("http://127.0.0.1:8000/api/stats/cache", "GET", None).await {
             if let Ok(stats) = serde_json::from_value::<CacheStats>(response["cache_stats"].clone()) {
                 set_cache_stats.set(Some(stats));
             }
         }
         
-        // Load memory stats
+
         if let Ok(response) = call_api::<(), serde_json::Value>("http://127.0.0.1:8000/api/stats/memory", "GET", None).await {
             if let Ok(stats) = serde_json::from_value::<MemoryStats>(response["memory_stats"].clone()) {
                 set_memory_stats.set(Some(stats));
@@ -264,11 +264,11 @@ fn StatsPage() -> impl IntoView {
 
     let compact_cache = create_action(move |_: &()| async move {
         let _ = call_api::<(), serde_json::Value>("http://127.0.0.1:8000/api/cache/compact", "POST", None).await;
-        // Reload stats after compaction
+
         load_stats.dispatch(());
     });
 
-    // Load stats on component mount
+
     create_effect(move |_| {
         load_stats.dispatch(());
     });
@@ -293,7 +293,7 @@ fn StatsPage() -> impl IntoView {
                 </button>
             </div>
 
-            // Search Statistics
+
             <div class="stats-section">
                 <h2>"🔍 Search Performance"</h2>
                 {move || match search_stats.get() {
@@ -321,7 +321,7 @@ fn StatsPage() -> impl IntoView {
                 }}
             </div>
 
-            // Cache Statistics
+
             <div class="stats-section">
                 <h2>"💾 Cache Performance"</h2>
                 {move || match cache_stats.get() {
@@ -351,7 +351,7 @@ fn StatsPage() -> impl IntoView {
                 }}
             </div>
 
-            // Memory Statistics
+
             <div class="stats-section">
                 <h2>"🧠 Memory Usage"</h2>
                 {move || match memory_stats.get() {
@@ -387,7 +387,7 @@ fn StatsPage() -> impl IntoView {
     }
 }
 
-// Generic API call helper
+
 async fn call_api<T: Serialize, R: for<'de> Deserialize<'de>>(
     url: &str, 
     method: &str, 
@@ -445,5 +445,5 @@ pub fn main() {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn main() {
-    // For non-WASM targets, do nothing or provide alternative implementation
+
 }
