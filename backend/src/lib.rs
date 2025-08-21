@@ -47,7 +47,7 @@ pub struct SearchResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BulkInsertRequest {
-    pub reviews: Vec<Review>,
+    pub reviews: Vec<ReviewInput>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

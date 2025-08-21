@@ -1,5 +1,5 @@
 use axum::{
-    extract::State,
+    extract::{rejection::JsonRejection, State},
     http::{Method, StatusCode},
     response::{Html, IntoResponse, Json},
     routing::{get, post},
@@ -23,6 +23,43 @@ use vector_store::VectorStore;
 
 
 type AppState = Arc<VectorStore>;
+
+// Custom JSON extractor that returns JSON error responses
+struct JsonExtractor<T>(pub T);
+
+#[axum::async_trait]
+impl<T, S> axum::extract::FromRequest<S> for JsonExtractor<T>
+where
+    T: serde::de::DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request(
+        req: axum::extract::Request,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        match Json::<T>::from_request(req, state).await {
+            Ok(Json(value)) => Ok(JsonExtractor(value)),
+            Err(rejection) => {
+                let error_message = match rejection {
+                    JsonRejection::JsonDataError(err) => format!("Invalid JSON data: {}", err),
+                    JsonRejection::JsonSyntaxError(err) => format!("JSON syntax error: {}", err),
+                    JsonRejection::MissingJsonContentType(_) => "Missing Content-Type: application/json header".to_string(),
+                    _ => "Invalid JSON request".to_string(),
+                };
+                
+                Err((
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(json!({
+                        "success": false,
+                        "error": error_message
+                    }))
+                ))
+            }
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -81,7 +118,7 @@ async fn index() -> impl IntoResponse {
 // API endpoint to add a single review
 async fn add_review(
     State(store): State<AppState>, 
-    Json(review_input): Json<ReviewInput>
+    JsonExtractor(review_input): JsonExtractor<ReviewInput>
 ) -> impl IntoResponse {
     println!("Received review request: {:?}", review_input);
     
@@ -162,15 +199,24 @@ async fn add_review(
 // API endpoint for bulk insert
 async fn add_reviews_bulk(
     State(store): State<AppState>, 
-    Json(request): Json<BulkInsertRequest>
+    JsonExtractor(request): JsonExtractor<BulkInsertRequest>
 ) -> impl IntoResponse {
     let mut processed_reviews = Vec::new();
     
- for mut review in request.reviews {
-        if review.id.is_empty() {
-            review.id = Uuid::new_v4().to_string();
-        }
-        review.created_at = Utc::now();
+    for review_input in request.reviews {
+        // Convert ReviewInput to Review
+        let review = Review {
+            id: if review_input.id.is_empty() {
+                Uuid::new_v4().to_string()
+            } else {
+                review_input.id
+            },
+            review_title: review_input.review_title,
+            review_body: review_input.review_body,
+            product_id: review_input.product_id,
+            review_rating: review_input.review_rating,
+            created_at: review_input.created_at.unwrap_or_else(|| Utc::now()),
+        };
         
         // Basic validation
         if !review.review_title.is_empty() && !review.review_body.is_empty() 
@@ -206,7 +252,7 @@ async fn add_reviews_bulk(
 // API endpoint for semantic search
 async fn search_reviews(
     State(store): State<AppState>,
-    Json(search_query): Json<SearchQuery>
+    JsonExtractor(search_query): JsonExtractor<SearchQuery>
 ) -> impl IntoResponse {
     if search_query.query.trim().is_empty() {
         return (
